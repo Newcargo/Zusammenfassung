@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dokument-Zusammenfassung v1.4</title>
+  <title>Dokument-Zusammenfassung v1.5</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/dist/tabler-icons.min.css">
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -95,7 +95,7 @@
 <div class="wrap">
   <div class="hdr">
     <h1><i class="ti ti-file-text" aria-hidden="true"></i> Dokument-Zusammenfassung</h1>
-    <span class="ver">v1.4</span>
+    <span class="ver">v1.5</span>
   </div>
   <p class="sub">PDF, Word (.docx) oder Textdatei — vollständig lokal, keine Daten verlassen deinen Browser.</p>
 
@@ -436,6 +436,7 @@ var App = (function() {
 
   // ---- Analyze ----
   function analyze() {
+    console.log('[DBG] analyze() called, mode='+mode);
     clearResult();
     var btn = g('abtn');
     btn.setAttribute('disabled','');
@@ -448,23 +449,29 @@ var App = (function() {
 
     var promise;
     if(mode==='file') {
+      console.log('[DBG] file mode, pickedFile=', pickedFile ? pickedFile.name : 'null');
       if(!pickedFile){ showError('Bitte zuerst eine Datei auswählen.'); reset(); return; }
       promise = extractText(pickedFile);
     } else {
       var raw = g('rawtxt').value;
+      console.log('[DBG] text mode, length='+raw.length);
       if(!raw.trim()){ showError('Bitte Text eingeben.'); reset(); return; }
       promise = Promise.resolve(raw);
     }
 
     promise.then(function(text){
+      console.log('[DBG] text extracted, length='+text.length);
       text = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
       if(text.trim().length<80) throw new Error('Text zu kurz für eine Zusammenfassung (min. 80 Zeichen).');
       var result = buildSummary(text);
+      console.log('[DBG] buildSummary result=', result);
       if(result.error) throw new Error(result.error);
       renderResult(text, result.points);
     }).catch(function(err){
+      console.error('[DBG] error:', err);
       showError(err.message||'Unbekannter Fehler.');
     }).finally(function(){
+      console.log('[DBG] finally: reset');
       reset();
     });
   }
@@ -480,7 +487,10 @@ var App = (function() {
     }).catch(function(){ showError('Kopieren fehlgeschlagen.'); });
   }
 
-  document.addEventListener('DOMContentLoaded', function(){ initDrop(); });
+  document.addEventListener('DOMContentLoaded', function(){
+    console.log('[DBG] DOMContentLoaded — App init');
+    initDrop();
+  });
 
   return { switchMode:switchMode, switchOut:switchOut, analyze:analyze, copySum:copySum };
 })();
