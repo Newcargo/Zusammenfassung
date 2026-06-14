@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dokument-Zusammenfassung v2.0</title>
+  <title>Dokument-Zusammenfassung v2.1</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/dist/tabler-icons.min.css">
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -95,7 +95,7 @@
 <div class="wrap">
   <div class="hdr">
     <h1><i class="ti ti-file-text" aria-hidden="true"></i> Dokument-Zusammenfassung</h1>
-    <span class="ver">v2.0</span>
+    <span class="ver">v2.1</span>
   </div>
   <p class="sub">PDF, Word (.docx) oder Textdatei — vollständig lokal, keine Daten verlassen deinen Browser.</p>
 
@@ -386,49 +386,56 @@ var App = (function() {
   var LANG_NAMES = {de:'Deutsch',en:'English',fr:'Français',it:'Italiano'};
 
   function buildSummary(text) {
-    // ---- Normalisierung ----
+    // ---- Schritt 1: Grundreinigung ----
     var clean = text
-      .replace(/\r\n/g, '\n')
-      // Boilerplate entfernen
       .replace(/Länderregelung Schweiz\s+RUAG INTERN[^\n]*/gi, '')
       .replace(/© RUAG[^\n]*/gi, '')
       .replace(/Dok\s*ID:[^\n]*/gi, '')
-      .replace(/\d+\s*\|\s*\d+/g, '')           // "7 | 18"
-      .replace(/\.{4,}/g, '')                    // "......."
+      .replace(/\d+\s*\|\s*\d+/g, '')
+      .replace(/\.{3,}/g, '')
+      .replace(/_{3,}/g, '')
       .replace(/\n{3,}/g, '\n\n')
       .trim();
 
-    // ---- Sätze extrahieren ----
-    // Alle Satzenden finden, auch über Zeilenumbrüche hinweg
-    var merged = clean.replace(/\n(?=[a-zäöüß])/g, ' '); // Zeilenumbruch mid-sentence entfernen
-    var raw = merged.match(/[^.!?]{25,}[.!?]/g) || [];
+    // ---- Schritt 2: Zeilenumbrüche mid-sentence entfernen ----
+    // Zeile endet OHNE Satzzeichen → wahrscheinlich mid-sentence wrap
+    var merged = clean.replace(/([^.!?\n])\n([a-zäöüß0-9])/g, '$1 $2');
 
-    var sents = raw.map(function(s){ return s.replace(/\n/g,' ').replace(/\s+/g,' ').trim(); })
-      .filter(function(s){
-        if (s.split(/\s+/).length < 6) return false;
-        if (s.length < 40) return false;
-        if (/©|RUAG INTERN|Dok\s*ID/i.test(s)) return false;
-        if (/^\s*[\d\.\s\|]+\s*$/.test(s)) return false;
-        if (/Inhaltsverzeichnis|Versionskontrolle|Schlussbestimmung|Rechtliche Grundlage/i.test(s)) return false;
-        return true;
-      });
+    // ---- Schritt 3: Sätze extrahieren ----
+    var raw = merged.match(/[^.!?\n]{20,}[.!?]/g) || [];
 
-    // ---- Fallback: Zeilen als Einheiten ----
-    if (sents.length < 4) {
-      sents = clean.split('\n')
-        .map(function(l){ return l.trim(); })
-        .filter(function(l){
-          return l.length > 50 &&
-                 l.split(/\s+/).length >= 6 &&
-                 !/©|RUAG INTERN|Dok\s*ID/i.test(l) &&
-                 !/^[\d\.\s\|]+$/.test(l) &&
-                 !/\.{3,}/.test(l);
-        });
-    }
+    var sents = [];
+    raw.forEach(function(s) {
+      s = s.replace(/\n/g,' ').replace(/\s+/g,' ').trim();
+
+      // Mindestlänge und Wortanzahl
+      if (s.length < 55) return;
+      var words = s.split(/\s+/);
+      if (words.length < 8) return;
+
+      // Boilerplate ausschliessen
+      if (/©|RUAG INTERN|Dok\s*ID/i.test(s)) return;
+      if (/Inhaltsverzeichnis|Versionskontrolle|Schlussbestimmung/i.test(s)) return;
+      if (/Unterschriften?\s+(der|von)/i.test(s)) return;
+      if (/ANV-Präsident|Ralf Müller|Helene Müller/i.test(s)) return;
+
+      // Fragmentierte Tabellenzeilen ausschliessen
+      // Erkennungszeichen: viele kurze Token, Klammern, Abkürzungen
+      var shortTokens = words.filter(function(w){ return w.length <= 3; }).length;
+      if (shortTokens / words.length > 0.45) return;  // >45% Kurztokens = Tabellenfragment
+
+      // Satz muss ein Verb enthalten (Hilfsverben, Modalverben, typische Verbendungen)
+      if (!/\b(ist|sind|wird|werden|hat|haben|kann|können|muss|müssen|darf|dürfen|gilt|gelten|erfolgt|erfolgen|beträgt|betragen|werden|wurde|wurden|soll|sollen|regelt|legt|umfasst|beginnt|endet|gewährt|angerechnet|erfasst|bezogen|geleistet)\b/i.test(s)) return;
+
+      // Keine reinen Aufzählungszeilen (beginnen mit a) b) c) oder Bullet)
+      if (/^\s*[a-z]\)\s/.test(s) && s.length < 120) return;
+
+      sents.push(s);
+    });
 
     if (sents.length === 0) return { error: 'Kein auswertbarer Text gefunden.' };
 
-    // ---- TF-Scoring mit Diversität ----
+    // ---- Schritt 4: TF-Scoring ----
     var freq = {};
     sents.forEach(function(s){
       tokenize(s).forEach(function(w){ freq[w] = (freq[w]||0) + 1; });
@@ -437,28 +444,31 @@ var App = (function() {
     var scored = sents.map(function(s, idx){
       var words = tokenize(s);
       if (words.length === 0) return { s:s, score:0, idx:idx };
+      // Seltene inhaltliche Wörter bevorzugen
       var score = words.reduce(function(sum,w){
-        return sum + 1/(freq[w] + 0.5); // seltene Wörter bevorzugen
+        return sum + 1 / (freq[w] + 0.5);
       }, 0) / words.length;
-      score *= Math.min(1 + words.length/20, 2); // längere Sätze leicht bevorzugen
+      // Längere Sätze leicht bevorzugen (mehr Inhalt)
+      score *= Math.min(1 + words.length / 25, 1.6);
       return { s:s, score:score, idx:idx };
     });
 
     scored.sort(function(a,b){ return b.score - a.score; });
 
-    // Diversität: keine zwei aufeinanderfolgenden Sätze
+    // ---- Schritt 5: Auswahl mit Diversität ----
+    var target = Math.min(Math.max(5, Math.ceil(sents.length * 0.10)), 8);
     var selected = [];
     var usedIdx = {};
-    var target = Math.min(Math.max(5, Math.ceil(sents.length * 0.08)), 8);
 
     for (var i = 0; i < scored.length && selected.length < target; i++) {
       var idx = scored[i].idx;
+      // Nicht zwei direkt benachbarte Sätze
       if (!usedIdx[idx-1] && !usedIdx[idx+1]) {
         selected.push(scored[i]);
         usedIdx[idx] = true;
       }
     }
-    // Falls zu wenig: Rest auffüllen ohne Diversitätsbeschränkung
+    // Auffüllen falls nötig
     for (var j = 0; j < scored.length && selected.length < target; j++) {
       if (!usedIdx[scored[j].idx]) {
         selected.push(scored[j]);
