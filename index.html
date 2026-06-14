@@ -569,6 +569,7 @@ var App = (function() {
 
     promise.then(function(text){
       console.log('[DBG] text extracted, length='+text.length);
+      console.log('[DBG] text sample:', JSON.stringify(text.slice(0, 500)));
       text = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
       if(text.trim().length<80) throw new Error('Text zu kurz für eine Zusammenfassung (min. 80 Zeichen).');
       var result = buildSummary(text);
