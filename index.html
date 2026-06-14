@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dokument-Zusammenfassung v1.2</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/dist/tabler-icons.min.css">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{
+      --bp:#fff;--bs:#f5f4f0;--bt:#eceae3;
+      --bi:#e6f1fb;--bd:#fcebeb;--bk:#eaf3de;
+      --tp:#1a1a18;--ts:#5f5e5a;
+      --ti:#185fa5;--td:#a32d2d;--tk:#3b6d11;
+      --bl:rgba(0,0,0,.10);--bm:rgba(0,0,0,.20);--bh:rgba(0,0,0,.32);
+      --r:8px;--rl:12px;
+      --ff:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    }
+    @media(prefers-color-scheme:dark){:root{
+      --bp:#1e1e1c;--bs:#282825;--bt:#323230;
+      --bi:#042c53;--bd:#501313;--bk:#173404;
+      --tp:#f0ede6;--ts:#a0a09a;
+      --ti:#85b7eb;--td:#f09595;--tk:#c0dd97;
+      --bl:rgba(255,255,255,.08);--bm:rgba(255,255,255,.18);--bh:rgba(255,255,255,.30);
+    }}
+    body{font-family:var(--ff);background:var(--bt);color:var(--tp);
+         min-height:100vh;display:flex;align-items:flex-start;justify-content:center;
+         padding:2rem 1rem 3rem;}
+    .wrap{width:100%;max-width:700px;}
+    .hdr{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px;}
+    h1{font-size:22px;font-weight:500;}
+    .ver{font-size:11px;color:var(--ts);background:var(--bs);border:0.5px solid var(--bl);
+         border-radius:20px;padding:2px 9px;font-family:monospace;}
+    .sub{font-size:14px;color:var(--ts);margin-bottom:1.5rem;line-height:1.5;}
+    .card{background:var(--bp);border:0.5px solid var(--bl);border-radius:var(--rl);
+          padding:1.5rem;margin-bottom:1rem;}
+    .tabs{display:flex;gap:6px;margin-bottom:1.25rem;}
+    .tb{flex:1;padding:9px 0;border:0.5px solid var(--bm);background:transparent;
+        color:var(--ts);border-radius:var(--r);cursor:pointer;font-size:14px;
+        font-family:var(--ff);transition:background .12s,color .12s,border-color .12s;}
+    .tb.on{background:var(--bs);color:var(--tp);border-color:var(--bh);font-weight:500;}
+    .tb:hover:not(.on){background:var(--bs);}
+    .dz{border:2px dashed var(--bm);border-radius:var(--rl);padding:2.5rem 1.5rem;
+        text-align:center;background:var(--bs);cursor:pointer;
+        transition:border-color .15s,background .15s;user-select:none;}
+    .dz:hover,.dz.over{border-color:var(--bh);background:var(--bt);}
+    .dz i.big{font-size:38px;color:var(--ts);display:block;margin-bottom:10px;}
+    .dz .t1{font-size:15px;color:var(--tp);margin-bottom:4px;}
+    .dz .t2{font-size:13px;color:var(--ts);}
+    #fbadge{display:none;margin-top:10px;padding:8px 12px;background:var(--bk);
+            color:var(--tk);border-radius:var(--r);font-size:13px;
+            align-items:center;gap:8px;}
+    textarea{width:100%;min-height:160px;border-radius:var(--r);border:0.5px solid var(--bm);
+             padding:12px;font-size:15px;background:var(--bs);color:var(--tp);
+             resize:vertical;font-family:var(--ff);line-height:1.6;margin-top:.75rem;
+             outline:none;transition:border-color .12s;}
+    textarea:focus{border-color:var(--bh);}
+    .outrow{display:flex;align-items:center;gap:8px;margin-top:1.1rem;}
+    .outlbl{font-size:13px;color:var(--ts);white-space:nowrap;}
+    .mbtn{width:100%;margin-top:1rem;padding:11px;border:0.5px solid var(--bm);
+          border-radius:var(--r);background:transparent;color:var(--tp);
+          font-size:15px;font-family:var(--ff);font-weight:500;cursor:pointer;
+          transition:background .12s;}
+    .mbtn:hover:not([disabled]){background:var(--bs);}
+    .mbtn:active:not([disabled]){transform:scale(.99);}
+    .mbtn[disabled]{opacity:.45;cursor:not-allowed;}
+    .errbox{display:none;margin-top:1rem;padding:12px 14px;background:var(--bd);
+            border-radius:var(--r);font-size:14px;color:var(--td);line-height:1.5;}
+    .res{display:none;background:var(--bp);border:0.5px solid var(--bl);
+         border-radius:var(--rl);padding:1.5rem;}
+    .reshdr{display:flex;align-items:center;margin-bottom:1rem;}
+    .lbadge{font-size:12px;padding:3px 10px;border-radius:20px;
+            background:var(--bi);color:var(--ti);}
+    .stats{display:flex;gap:10px;margin-bottom:1.25rem;}
+    .sb{flex:1;background:var(--bs);border-radius:var(--r);padding:10px 14px;}
+    .sv{font-size:18px;font-weight:500;}
+    .sl{font-size:12px;color:var(--ts);margin-top:2px;}
+    .slbl{font-size:13px;font-weight:500;color:var(--ts);margin-bottom:10px;}
+    .bi{display:flex;gap:10px;margin-bottom:10px;font-size:15px;line-height:1.65;}
+    .bdot{width:6px;height:6px;border-radius:50%;background:var(--ts);margin-top:10px;flex-shrink:0;}
+    .pp{margin:0 0 .8rem;font-size:15px;line-height:1.7;}
+    .cbtn{width:100%;margin-top:1rem;padding:9px;border:0.5px solid var(--bm);
+          border-radius:var(--r);background:transparent;color:var(--ts);
+          font-size:14px;font-family:var(--ff);cursor:pointer;
+          transition:background .12s,color .12s;}
+    .cbtn:hover{background:var(--bs);color:var(--tp);}
+    .spin{display:inline-block;width:15px;height:15px;border:2px solid var(--bm);
+          border-top-color:var(--tp);border-radius:50%;
+          animation:sp .7s linear infinite;vertical-align:middle;margin-right:7px;}
+    @keyframes sp{to{transform:rotate(360deg)}}
+    footer{text-align:center;font-size:12px;color:var(--ts);margin-top:1.5rem;}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hdr">
+    <h1><i class="ti ti-file-text" aria-hidden="true"></i> Dokument-Zusammenfassung</h1>
+    <span class="ver">v1.2</span>
+  </div>
+  <p class="sub">PDF, Word (.docx) oder Textdatei — vollst&auml;ndig lokal, keine Daten verlassen deinen Browser.</p>
+
+  <div class="card">
+    <div class="tabs">
+      <button class="tb on" id="btn-file" onclick="App.switchMode('file')">
+        <i class="ti ti-upload" aria-hidden="true"></i> Datei hochladen
+      </button>
+      <button class="tb" id="btn-text" onclick="App.switchMode('text')">
+        <i class="ti ti-clipboard-text" aria-hidden="true"></i> Text einf&uuml;gen
+      </button>
+    </div>
+
+    <div id="pfile">
+      <div class="dz" id="dz" tabindex="0" role="button" aria-label="Datei ausw&auml;hlen">
+        <i class="ti ti-cloud-upload big" aria-hidden="true"></i>
+        <p class="t1">Klicken oder Datei hierher ziehen</p>
+        <p class="t2">PDF &nbsp;&middot;&nbsp; DOCX &nbsp;&middot;&nbsp; TXT &mdash; bis 50 MB</p>
+      </div>
+      <input type="file" id="fi" accept=".pdf,.docx,.txt" style="display:none">
+      <div id="fbadge">
+        <i class="ti ti-file-check" aria-hidden="true"></i>
+        <span id="fname"></span>
+        <span id="fsize" style="margin-left:auto;opacity:.7;"></span>
+      </div>
+    </div>
+
+    <div id="ptext" style="display:none">
+      <textarea id="rawtxt" placeholder="Text hier einf&uuml;gen&hellip;"></textarea>
+    </div>
+
+    <div class="outrow">
+      <span class="outlbl">Ausgabe:</span>
+      <div style="display:flex;gap:6px;flex:1">
+        <button class="tb on" id="btn-bul" onclick="App.switchOut('bullets')">
+          <i class="ti ti-list" aria-hidden="true"></i> Stichpunkte
+        </button>
+        <button class="tb" id="btn-pro" onclick="App.switchOut('prose')">
+          <i class="ti ti-align-left" aria-hidden="true"></i> Fliesstext
+        </button>
+      </div>
+    </div>
+
+    <button class="mbtn" id="abtn" onclick="App.analyze()">
+      <i class="ti ti-sparkles" aria-hidden="true"></i> Zusammenfassung erstellen
+    </button>
+    <div class="errbox" id="errbox"></div>
+  </div>
+
+  <div class="res" id="rescard">
+    <div class="reshdr"><span class="lbadge" id="lbadge"></span></div>
+    <div class="stats">
+      <div class="sb"><div class="sv" id="sw">-</div><div class="sl">W&ouml;rter Original</div></div>
+      <div class="sb"><div class="sv" id="sc">-</div><div class="sl">K&uuml;rzung</div></div>
+      <div class="sb"><div class="sv" id="sr">-</div><div class="sl">Lesezeit Original</div></div>
+    </div>
+    <div class="slbl" id="slbl">Kernaussagen</div>
+    <div id="scont"></div>
+    <button class="cbtn" id="cbtn" onclick="App.copySum()">
+      <i class="ti ti-copy" aria-hidden="true"></i> Zusammenfassung kopieren
+    </button>
+  </div>
+
+  <footer><i class="ti ti-lock" aria-hidden="true"></i> Kein Server &middot; keine KI &middot; keine Daten&uuml;bertragung</footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js"></script>
+<script>
+var App = (function() {
+
+  // State
+  var mode = 'file';
+  var outMode = 'bullets';
+  var pickedFile = null;
+
+  // DOM helper
+  function g(id) { return document.getElementById(id); }
+
+  function esc(s) {
+    return String(s)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;');
+  }
+
+  // ---- UI state ----
+  function switchMode(m) {
+    mode = m;
+    g('pfile').style.display = (m === 'file') ? '' : 'none';
+    g('ptext').style.display = (m === 'text') ? '' : 'none';
+    g('btn-file').className = 'tb' + (m === 'file' ? ' on' : '');
+    g('btn-text').className = 'tb' + (m === 'text' ? ' on' : '');
+    clearResult();
+  }
+
+  function switchOut(o) {
+    outMode = o;
+    g('btn-bul').className = 'tb' + (o === 'bullets' ? ' on' : '');
+    g('btn-pro').className = 'tb' + (o === 'prose'   ? ' on' : '');
+  }
+
+  function clearResult() {
+    g('rescard').style.display = 'none';
+    g('errbox').style.display  = 'none';
+    g('errbox').innerHTML = '';
+  }
+
+  function showError(msg) {
+    g('errbox').style.display = '';
+    g('errbox').innerHTML = '<i class="ti ti-alert-circle"></i> ' + esc(msg);
+  }
+
+  // ---- File handling ----
+  function initDrop() {
+    var dz = g('dz');
+    var fi = g('fi');
+
+    dz.addEventListener('click', function() { fi.click(); });
+    dz.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fi.click(); }
+    });
+    dz.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      dz.classList.add('over');
+    });
+    dz.addEventListener('dragleave', function(e) {
+      if (!dz.contains(e.relatedTarget)) dz.classList.remove('over');
+    });
+    dz.addEventListener('drop', function(e) {
+      e.preventDefault();
+      dz.classList.remove('over');
+      var f = e.dataTransfer.files[0];
+      if (f) acceptFile(f);
+    });
+    fi.addEventListener('change', function() {
+      if (fi.files.length > 0) {
+        acceptFile(fi.files[0]);
+        fi.value = '';
+      }
+    });
+  }
+
+  function acceptFile(f) {
+    var ext = f.name.split('.').pop().toLowerCase();
+    if (ext !== 'pdf' && ext !== 'docx' && ext !== 'txt') {
+      showError('Nur PDF, DOCX oder TXT erlaubt.');
+      return;
+    }
+    pickedFile = f;
+    var badge = g('fbadge');
+    badge.style.display = 'flex';
+    g('fname').textContent = f.name;
+    g('fsize').textContent = fmtBytes(f.size);
+    clearResult();
+  }
+
+  function fmtBytes(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+    return (b / 1048576).toFixed(1) + ' MB';
+  }
+
+  // ---- Text extraction ----
+  function readFileAsText(file) {
+    return new Promise(function(resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function(e) { resolve(e.target.result); };
+      reader.onerror = function() { reject(new Error('Datei konnte nicht gelesen werden.')); };
+      reader.readAsText(file, 'UTF-8');
+    });
+  }
+
+  function readFileAsBuffer(file) {
+    return new Promise(function(resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function(e) { resolve(e.target.result); };
+      reader.onerror = function() { reject(new Error('Datei konnte nicht gelesen werden.')); };
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  function extractFromTxt(file) {
+    return readFileAsText(file);
+  }
+
+  function extractFromDocx(file) {
+    return readFileAsBuffer(file).then(function(buf) {
+      if (typeof mammoth === 'undefined') {
+        throw new Error('Mammoth-Bibliothek nicht verf\u00fcgbar. Internetverbindung pr\u00fcfen.');
+      }
+      return mammoth.extractRawText({ arrayBuffer: buf });
+    }).then(function(result) {
+      if (!result.value || !result.value.trim()) {
+        throw new Error('Das DOCX enth\u00e4lt keinen lesbaren Text.');
+      }
+      return result.value;
+    });
+  }
+
+  function extractFromPdf(file) {
+    return readFileAsBuffer(file).then(function(buf) {
+      if (typeof pdfjsLib === 'undefined') {
+        throw new Error('PDF.js nicht verf\u00fcgbar. Internetverbindung pr\u00fcfen.');
+      }
+      // Disable worker entirely — required for file:// (local) usage
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+      return pdfjsLib.getDocument({
+        data: buf,
+        useWorkerFetch: false,
+        isEvalSupported: false,
+        disableWorker: true,
+        useSystemFonts: true
+      }).promise;
+    }).then(function(pdf) {
+      var pages = [];
+      for (var i = 1; i <= pdf.numPages; i++) {
+        pages.push(i);
+      }
+      var texts = [];
+      return pages.reduce(function(chain, pageNum) {
+        return chain.then(function() {
+          return pdf.getPage(pageNum).then(function(page) {
+            return page.getTextContent();
+          }).then(function(content) {
+            texts.push(content.items.map(function(item) { return item.str; }).join(' '));
+          });
+        });
+      }, Promise.resolve()).then(function() {
+        var full = texts.join('\n').trim();
+        if (!full) throw new Error('PDF enth\u00e4lt keinen extrahierbaren Text. Bitte Text manuell einf\u00fcgen.');
+        return full;
+      });
+    });
+  }
+
+  function extractText(file) {
+    var ext = file.name.split('.').pop().toLowerCase();
+    if (ext === 'txt')  return extractFromTxt(file);
+    if (ext === 'docx') return extractFromDocx(file);
+    if (ext === 'pdf')  return extractFromPdf(file);
+    return Promise.reject(new Error('Nicht unterst\u00fctztes Format.'));
+  }
+
+  // ---- NLP ----
+  var STOP = {'der':1,'die':1,'das':1,'und':1,'ist':1,'ich':1,'nicht':1,'mit':1,
+    'fuer':1,'auf':1,'eine':1,'ein':1,'auch':1,'an':1,'in':1,'im':1,'so':1,'zu':1,
+    'als':1,'er':1,'sie':1,'wir':1,'was':1,'wird':1,'sich':1,'haben':1,'hat':1,
+    'sein':1,'aus':1,'dem':1,'den':1,'es':1,'am':1,'bei':1,'nach':1,'von':1,'vor':1,
+    'the':1,'is':1,'and':1,'to':1,'of':1,'a':1,'that':1,'it':1,'for':1,'on':1,
+    'with':1,'are':1,'this':1,'be':1,'as':1,'by':1,'or':1,'at':1,'but':1,'from':1,
+    'we':1,'been':1,'its':1,'they':1,'their':1,'his':1,'her':1,'have':1,'had':1,
+    'he':1,'she':1,'you':1,'can':1,'all':1,'more':1,'was':1,'were':1,'not':1,
+    'le':1,'la':1,'les':1,'et':1,'est':1,'je':1,'ne':1,'pas':1,'un':1,'une':1,
+    'de':1,'du':1,'que':1,'qui':1,'pour':1,'il':1,'elle':1,'nous':1,'vous':1};
+
+  function tokenize(text) {
+    return text.toLowerCase()
+      .replace(/[^a-zäöüßàâéèêïîùûóú\s]/g, ' ')
+      .split(/\s+/)
+      .filter(function(w) { return w.length > 3 && !STOP[w]; });
+  }
+
+  function detectLang(text) {
+    var s = text.slice(0, 800).toLowerCase();
+    var scores = {
+      de: (s.match(/\b(der|die|das|und|ist|nicht|mit|auch|dem|den|wird|sich|nach|wenn|werden)\b/g)||[]).length,
+      en: (s.match(/\b(the|is|and|to|of|in|that|it|for|on|with|are|this|be|have|from|was|they)\b/g)||[]).length,
+      fr: (s.match(/\b(le|la|les|et|est|ne|pas|un|une|de|du|que|qui|pour|dans|sur|avec|au)\b/g)||[]).length,
+      it: (s.match(/\b(il|lo|la|le|di|non|un|una|che|per|del|della|con|sono|nel|questo)\b/g)||[]).length
+    };
+    var best = 'de', bestN = -1;
+    Object.keys(scores).forEach(function(k) { if (scores[k] > bestN) { bestN = scores[k]; best = k; } });
+    return best;
+  }
+
+  var LANG_NAMES = { de: 'Deutsch', en: 'English', fr: 'Fran\u00e7ais', it: 'Italiano' };
+
+  function buildSummary(text) {
+    // Split into sentences
+    var raw = text.match(/[^.!?\u2026]+[.!?\u2026]+/g) || [];
+    var sents = raw.map(function(s) { return s.trim(); })
+                   .filter(function(s) { return s.split(/\s+/).length > 4 && s.length > 20; });
+
+    // Fallback: use lines
+    if (sents.length < 3) {
+      sents = text.split('\n')
+                  .map(function(l) { return l.trim(); })
+                  .filter(function(l) { return l.length > 30; });
+    }
+
+    if (sents.length === 0) {
+      return { error: 'Kein auswertbarer Text gefunden.' };
+    }
+
+    // TF scoring
+    var freq = {};
+    sents.forEach(function(s) {
+      tokenize(s).forEach(function(w) { freq[w] = (freq[w] || 0) + 1; });
+    });
+
+    var scored = sents.map(function(s, idx) {
+      var words = tokenize(s);
+      var score = words.length === 0 ? 0 :
+        words.reduce(function(sum, w) { return sum + (freq[w] || 0); }, 0) / words.length;
+      return { s: s, score: score, idx: idx };
+    });
+
+    scored.sort(function(a, b) { return b.score - a.score; });
+
+    var n = Math.min(Math.max(3, Math.ceil(sents.length * 0.15)), 8);
+    var top = scored.slice(0, n);
+    top.sort(function(a, b) { return a.idx - b.idx; });
+
+    return { points: top.map(function(x) { return x.s; }) };
+  }
+
+  function wordCount(t) {
+    return t.trim().split(/\s+/).filter(Boolean).length;
+  }
+
+  function readingTime(w) {
+    var m = Math.round(w / 220);
+    return m < 1 ? '< 1 Min.' : m + ' Min.';
+  }
+
+  // ---- Render result ----
+  function renderResult(text, points) {
+    var lang  = detectLang(text);
+    var words = wordCount(text);
+    var sumW  = points.reduce(function(s, p) { return s + wordCount(p); }, 0);
+    var pct   = Math.max(0, Math.round((1 - sumW / words) * 100));
+
+    g('lbadge').textContent = LANG_NAMES[lang] || lang.toUpperCase();
+    g('sw').textContent = words.toLocaleString('de-CH');
+    g('sc').textContent = pct + '%';
+    g('sr').textContent = readingTime(words);
+
+    var cont = g('scont');
+    cont.innerHTML = '';
+
+    if (outMode === 'bullets') {
+      g('slbl').textContent = 'Kernaussagen';
+      points.forEach(function(pt) {
+        var div = document.createElement('div');
+        div.className = 'bi';
+        var dot = document.createElement('div');
+        dot.className = 'bdot';
+        var span = document.createElement('div');
+        span.textContent = pt;
+        div.appendChild(dot);
+        div.appendChild(span);
+        cont.appendChild(div);
+      });
+    } else {
+      g('slbl').textContent = 'Zusammenfassung';
+      var half = Math.ceil(points.length / 2);
+      [points.slice(0, half), points.slice(half)].forEach(function(chunk) {
+        if (!chunk.length) return;
+        var p = document.createElement('p');
+        p.className = 'pp';
+        p.textContent = chunk.join(' ');
+        cont.appendChild(p);
+      });
+    }
+
+    g('rescard').style.display = '';
+    g('rescard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // ---- Main analyze ----
+  function analyze() {
+    clearResult();
+    var btn = g('abtn');
+    btn.setAttribute('disabled', '');
+    btn.innerHTML = '<span class="spin"></span>Wird analysiert…';
+
+    var promise;
+    if (mode === 'file') {
+      if (!pickedFile) {
+        showError('Bitte zuerst eine Datei auswählen oder per Drag & Drop ablegen.');
+        btn.removeAttribute('disabled');
+        btn.innerHTML = '<i class="ti ti-sparkles"></i> Zusammenfassung erstellen';
+        return;
+      }
+      promise = extractText(pickedFile);
+    } else {
+      var raw = g('rawtxt').value;
+      if (!raw.trim()) {
+        showError('Bitte Text eingeben.');
+        btn.removeAttribute('disabled');
+        btn.innerHTML = '<i class="ti ti-sparkles"></i> Zusammenfassung erstellen';
+        return;
+      }
+      promise = Promise.resolve(raw);
+    }
+
+    promise.then(function(text) {
+      text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      if (text.trim().length < 80) {
+        throw new Error('Text zu kurz für eine Zusammenfassung (min. 80 Zeichen).');
+      }
+      var result = buildSummary(text);
+      if (result.error) throw new Error(result.error);
+      renderResult(text, result.points);
+    }).catch(function(err) {
+      showError(err.message || 'Unbekannter Fehler.');
+    }).finally(function() {
+      btn.removeAttribute('disabled');
+      btn.innerHTML = '<i class="ti ti-sparkles"></i> Zusammenfassung erstellen';
+    });
+  }
+
+  // ---- Copy ----
+  function copySum() {
+    var text = g('scont').innerText;
+    if (!navigator.clipboard) {
+      showError('Kopieren nicht verfügbar. Bitte manuell markieren.');
+      return;
+    }
+    navigator.clipboard.writeText(text).then(function() {
+      var b = g('cbtn');
+      b.innerHTML = '<i class="ti ti-check"></i> Kopiert!';
+      setTimeout(function() {
+        b.innerHTML = '<i class="ti ti-copy"></i> Zusammenfassung kopieren';
+      }, 2000);
+    }).catch(function() {
+      showError('Kopieren fehlgeschlagen — bitte manuell markieren.');
+    });
+  }
+
+  // ---- Init ----
+  document.addEventListener('DOMContentLoaded', function() {
+    initDrop();
+  });
+
+  // Public API
+  return {
+    switchMode: switchMode,
+    switchOut:  switchOut,
+    analyze:    analyze,
+    copySum:    copySum
+  };
+
+})();
+</script>
+</body>
+</html>
