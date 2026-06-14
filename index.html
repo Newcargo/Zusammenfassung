@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dokument-Zusammenfassung v1.6</title>
+  <title>Dokument-Zusammenfassung v1.7</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/dist/tabler-icons.min.css">
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -95,7 +95,7 @@
 <div class="wrap">
   <div class="hdr">
     <h1><i class="ti ti-file-text" aria-hidden="true"></i> Dokument-Zusammenfassung</h1>
-    <span class="ver">v1.6</span>
+    <span class="ver">v1.7</span>
   </div>
   <p class="sub">PDF, Word (.docx) oder Textdatei — vollständig lokal, keine Daten verlassen deinen Browser.</p>
 
@@ -311,8 +311,26 @@ var App = (function() {
     var ext = file.name.split('.').pop().toLowerCase();
     if(ext==='txt')  return readAsText(file);
     if(ext==='docx') return extractDocx(file);
-    if(ext==='pdf')  return extractPdf(file);
+    if(ext==='pdf')  return extractPdf(file).then(cleanPdfText);
     return Promise.reject(new Error('Nicht unterstütztes Format.'));
+  }
+
+  // ---- PDF Textreinigung ----
+  function cleanPdfText(raw) {
+    var lines = raw.split('\n');
+    var cleaned = lines.filter(function(line) {
+      var t = line.trim();
+      if (t.length < 20) return false;                        // Zu kurze Zeilen (Seitenzahlen, etc.)
+      if (/^\d+\s*\|?\s*\d+$/.test(t)) return false;         // "2 | 18" Seitenzahlen
+      if (/©/.test(t)) return false;                          // Copyright-Zeilen
+      if (/Dok\s*ID:/i.test(t)) return false;                 // Header-Zeilen
+      if (/RUAG\s+INTERN/i.test(t)) return false;             // Klassifizierungs-Header
+      if (/Länderregelung\s+Schweiz\s+RUAG/i.test(t)) return false; // Wiederholende Kopfzeilen
+      if (/\.{5,}/.test(t)) return false;                     // Inhaltsverzeichnis-Punkte "......."
+      if (/^[\d\.]+\s*$/.test(t)) return false;               // Nur Nummern
+      return true;
+    });
+    return cleaned.join('\n');
   }
 
   // ---- NLP Summarizer ----
@@ -354,15 +372,26 @@ var App = (function() {
 
   function buildSummary(text) {
     // Sätze extrahieren
-    var raw = text.match(/[^.!?\n]+[.!?]+/g) || [];
+    var raw = text.match(/[^.!?\n]{30,}[.!?]/g) || [];
     var sents = raw.map(function(s){ return s.trim(); })
-                   .filter(function(s){ return s.split(/\s+/).length>5 && s.length>25; });
+                   .filter(function(s){
+                     if (s.split(/\s+/).length < 7) return false;   // Mindestens 7 Wörter
+                     if (s.length < 40) return false;                // Mindestens 40 Zeichen
+                     if (/^\d[\d\.\s]+$/.test(s)) return false;     // Nur Zahlen/Nummern
+                     if (/Dok\s*ID|RUAG\s+INTERN|©/i.test(s)) return false; // Header-Reste
+                     return true;
+                   });
 
-    // Fallback: Absätze / Zeilen
+    // Fallback: Absätze
     if(sents.length < 3) {
       sents = text.split(/\n+/)
                   .map(function(l){ return l.trim(); })
-                  .filter(function(l){ return l.length>40; });
+                  .filter(function(l){
+                    return l.length > 60 &&
+                           !/\.{4,}/.test(l) &&
+                           !/©/.test(l) &&
+                           !/RUAG\s+INTERN/i.test(l);
+                  });
     }
 
     if(sents.length===0) return { error:'Kein auswertbarer Text gefunden.' };
@@ -377,7 +406,7 @@ var App = (function() {
       var words = tokenize(s);
       var score = words.length===0 ? 0 :
         words.reduce(function(sum,w){ return sum+(freq[w]||0); },0) / words.length;
-      // Bonus für erste/letzte Sätze (oft wichtig)
+      // Bonus für erste/letzte Sätze
       if(idx===0 || idx===1) score *= 1.2;
       if(idx>=sents.length-2) score *= 1.1;
       return {s:s, score:score, idx:idx};
@@ -385,7 +414,7 @@ var App = (function() {
 
     scored.sort(function(a,b){ return b.score-a.score; });
 
-    var n = Math.min(Math.max(3, Math.ceil(sents.length*0.15)), 8);
+    var n = Math.min(Math.max(4, Math.ceil(sents.length*0.12)), 8);
     var top = scored.slice(0,n);
     top.sort(function(a,b){ return a.idx-b.idx; });
 
