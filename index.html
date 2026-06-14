@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dokument-Zusammenfassung v1.7</title>
+  <title>Dokument-Zusammenfassung v1.8</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/dist/tabler-icons.min.css">
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -95,7 +95,7 @@
 <div class="wrap">
   <div class="hdr">
     <h1><i class="ti ti-file-text" aria-hidden="true"></i> Dokument-Zusammenfassung</h1>
-    <span class="ver">v1.7</span>
+    <span class="ver">v1.8</span>
   </div>
   <p class="sub">PDF, Word (.docx) oder Textdatei — vollständig lokal, keine Daten verlassen deinen Browser.</p>
 
@@ -287,21 +287,33 @@ var App = (function() {
     return readAsBuffer(file).then(function(buf){
       return pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
     }).then(function(pdf){
-      var chain = Promise.resolve(), texts = [];
+      var chain = Promise.resolve(), pages = [];
       for(var i=1; i<=pdf.numPages; i++){
         (function(n){
           chain = chain.then(function(){
             return pdf.getPage(n).then(function(pg){
-              return pg.getTextContent();
+              return pg.getTextContent({ normalizeWhitespace: true });
             }).then(function(c){
-              texts.push(c.items.map(function(it){ return it.str; }).join(' '));
+              // Items mit Position vergleichen — neues Y = neue Zeile
+              var lines = [], lastY = null, curLine = [];
+              c.items.forEach(function(item){
+                var y = item.transform ? Math.round(item.transform[5]) : null;
+                if (lastY !== null && y !== null && Math.abs(y - lastY) > 2) {
+                  if (curLine.length) lines.push(curLine.join(' '));
+                  curLine = [];
+                }
+                if (item.str.trim()) curLine.push(item.str);
+                lastY = y;
+              });
+              if (curLine.length) lines.push(curLine.join(' '));
+              pages.push(lines.join('\n'));
             });
           });
         })(i);
       }
       return chain.then(function(){
-        var full = texts.join('\n').trim();
-        if(!full) throw new Error('Kein Text im PDF gefunden. Bitte "Text einfügen" verwenden (z.B. bei gescannten PDFs).');
+        var full = pages.join('\n').trim();
+        if(!full) throw new Error('Kein Text im PDF gefunden. Bitte "Text einfügen" verwenden.');
         return full;
       });
     });
@@ -320,17 +332,20 @@ var App = (function() {
     var lines = raw.split('\n');
     var cleaned = lines.filter(function(line) {
       var t = line.trim();
-      if (t.length < 20) return false;                        // Zu kurze Zeilen (Seitenzahlen, etc.)
-      if (/^\d+\s*\|?\s*\d+$/.test(t)) return false;         // "2 | 18" Seitenzahlen
-      if (/©/.test(t)) return false;                          // Copyright-Zeilen
-      if (/Dok\s*ID:/i.test(t)) return false;                 // Header-Zeilen
-      if (/RUAG\s+INTERN/i.test(t)) return false;             // Klassifizierungs-Header
-      if (/Länderregelung\s+Schweiz\s+RUAG/i.test(t)) return false; // Wiederholende Kopfzeilen
-      if (/\.{5,}/.test(t)) return false;                     // Inhaltsverzeichnis-Punkte "......."
-      if (/^[\d\.]+\s*$/.test(t)) return false;               // Nur Nummern
+      if (t.length < 15) return false;                              // Seitenzahlen, kurze Fragmente
+      if (/^\d+\s*\|?\s*\d+\s*$/.test(t)) return false;           // "2 | 18"
+      if (/©/.test(t)) return false;                               // Copyright
+      if (/Dok\s*(ID|Nr)/i.test(t)) return false;                  // Dok ID: Header
+      if (/RUAG\s+INTERN/i.test(t)) return false;                  // Klassifizierung
+      if (/Länderregelung\s+Schweiz\s+RUAG/i.test(t)) return false;
+      if (/\.{4,}/.test(t)) return false;                          // Inhaltsverzeichnis
+      if (/^[\d\s\.\|]+$/.test(t)) return false;                   // Nur Zahlen/Punkte
       return true;
     });
-    return cleaned.join('\n');
+    var result = cleaned.join('\n');
+    // Fallback: wenn zu wenig übrig, Originaltext zurückgeben
+    if (result.trim().length < 200) return raw;
+    return result;
   }
 
   // ---- NLP Summarizer ----
