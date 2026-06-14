@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dokument-Zusammenfassung v1.5</title>
+  <title>Dokument-Zusammenfassung v1.6</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/dist/tabler-icons.min.css">
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -95,7 +95,7 @@
 <div class="wrap">
   <div class="hdr">
     <h1><i class="ti ti-file-text" aria-hidden="true"></i> Dokument-Zusammenfassung</h1>
-    <span class="ver">v1.5</span>
+    <span class="ver">v1.6</span>
   </div>
   <p class="sub">PDF, Word (.docx) oder Textdatei — vollständig lokal, keine Daten verlassen deinen Browser.</p>
 
@@ -209,7 +209,7 @@ var App = (function() {
   }
 
   function showError(msg) {
-    g('errbox').style.display = '';
+    g('errbox').style.display = 'block';
     g('errbox').innerHTML = '<i class="ti ti-alert-circle"></i> ' + esc(msg);
   }
 
@@ -430,7 +430,7 @@ var App = (function() {
       });
     }
 
-    g('rescard').style.display='';
+    g('rescard').style.display='block';
     g('rescard').scrollIntoView({behavior:'smooth',block:'nearest'});
   }
 
