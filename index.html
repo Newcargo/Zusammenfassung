@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dokument-Zusammenfassung v1.9</title>
+  <title>Dokument-Zusammenfassung v2.0</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/dist/tabler-icons.min.css">
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -95,7 +95,7 @@
 <div class="wrap">
   <div class="hdr">
     <h1><i class="ti ti-file-text" aria-hidden="true"></i> Dokument-Zusammenfassung</h1>
-    <span class="ver">v1.9</span>
+    <span class="ver">v2.0</span>
   </div>
   <p class="sub">PDF, Word (.docx) oder Textdatei — vollständig lokal, keine Daten verlassen deinen Browser.</p>
 
@@ -386,118 +386,88 @@ var App = (function() {
   var LANG_NAMES = {de:'Deutsch',en:'English',fr:'Français',it:'Italiano'};
 
   function buildSummary(text) {
-    // ---- Schritt 1: Text in Absätze aufteilen ----
-    // Absätze = durch Leerzeile oder Kapitelüberschrift getrennte Blöcke
-    var blocks = text.split(/\n{2,}/)
-      .map(function(b){ return b.replace(/\n/g,' ').replace(/\s+/g,' ').trim(); })
-      .filter(function(b){
-        if (b.length < 50) return false;
-        if (/©|Dok\s*ID|RUAG\s+INTERN|Länderregelung\s+Schweiz\s+RUAG/i.test(b)) return false;
-        if (/\.{4,}/.test(b)) return false;              // Inhaltsverzeichnis
-        if (/^\s*[\d\.]+\s*$/.test(b)) return false;     // Nur Nummern
-        if (/Inhaltsverzeichnis/i.test(b)) return false;
-        if (/Versionskontrolle/i.test(b)) return false;
-        if (/Schlussbestimmung/i.test(b)) return false;
-        if (/Rechtliche\s+Grundlage/i.test(b)) return false;
+    // ---- Normalisierung ----
+    var clean = text
+      .replace(/\r\n/g, '\n')
+      // Boilerplate entfernen
+      .replace(/Länderregelung Schweiz\s+RUAG INTERN[^\n]*/gi, '')
+      .replace(/© RUAG[^\n]*/gi, '')
+      .replace(/Dok\s*ID:[^\n]*/gi, '')
+      .replace(/\d+\s*\|\s*\d+/g, '')           // "7 | 18"
+      .replace(/\.{4,}/g, '')                    // "......."
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
+    // ---- Sätze extrahieren ----
+    // Alle Satzenden finden, auch über Zeilenumbrüche hinweg
+    var merged = clean.replace(/\n(?=[a-zäöüß])/g, ' '); // Zeilenumbruch mid-sentence entfernen
+    var raw = merged.match(/[^.!?]{25,}[.!?]/g) || [];
+
+    var sents = raw.map(function(s){ return s.replace(/\n/g,' ').replace(/\s+/g,' ').trim(); })
+      .filter(function(s){
+        if (s.split(/\s+/).length < 6) return false;
+        if (s.length < 40) return false;
+        if (/©|RUAG INTERN|Dok\s*ID/i.test(s)) return false;
+        if (/^\s*[\d\.\s\|]+\s*$/.test(s)) return false;
+        if (/Inhaltsverzeichnis|Versionskontrolle|Schlussbestimmung|Rechtliche Grundlage/i.test(s)) return false;
         return true;
       });
 
-    if (blocks.length === 0) return { error: 'Kein auswertbarer Text gefunden.' };
-
-    // ---- Schritt 2: Kapitelstruktur erkennen ----
-    // Kapitelheader = kurze Zeile die mit Zahl beginnt (z.B. "2.1.1 Jährliche Normalarbeitszeit")
-    var sections = [];
-    var currentHeader = '';
-    var currentBody = [];
-
-    blocks.forEach(function(b) {
-      if (/^\d[\d\.]*\s+[A-ZÄÖÜ]/.test(b) && b.length < 120) {
-        // Kapitelheader — speichere vorherigen Block
-        if (currentBody.length) {
-          sections.push({ header: currentHeader, body: currentBody.join(' ') });
-        }
-        currentHeader = b;
-        currentBody = [];
-      } else {
-        currentBody.push(b);
-      }
-    });
-    if (currentBody.length) {
-      sections.push({ header: currentHeader, body: currentBody.join(' ') });
+    // ---- Fallback: Zeilen als Einheiten ----
+    if (sents.length < 4) {
+      sents = clean.split('\n')
+        .map(function(l){ return l.trim(); })
+        .filter(function(l){
+          return l.length > 50 &&
+                 l.split(/\s+/).length >= 6 &&
+                 !/©|RUAG INTERN|Dok\s*ID/i.test(l) &&
+                 !/^[\d\.\s\|]+$/.test(l) &&
+                 !/\.{3,}/.test(l);
+        });
     }
 
-    // Fallback wenn keine Kapitelstruktur erkannt
-    if (sections.length === 0) {
-      sections = blocks.map(function(b){ return { header: '', body: b }; });
-    }
+    if (sents.length === 0) return { error: 'Kein auswertbarer Text gefunden.' };
 
-    // ---- Schritt 3: Sätze aus Absätzen extrahieren ----
-    var allSents = [];
-    sections.forEach(function(sec, secIdx) {
-      // Sätze aus body extrahieren
-      var raw = sec.body.match(/[^.!?]{20,}[.!?]/g) || [];
-      raw.forEach(function(s) {
-        s = s.trim();
-        if (s.split(/\s+/).length < 8) return;   // min 8 Wörter
-        if (s.length < 50) return;
-        allSents.push({ s: s, secIdx: secIdx, header: sec.header });
-      });
-    });
-
-    // Fallback: Absätze direkt als "Sätze" nutzen
-    if (allSents.length < 3) {
-      sections.forEach(function(sec, secIdx) {
-        if (sec.body.length > 80) {
-          allSents.push({ s: sec.body.slice(0, 300), secIdx: secIdx, header: sec.header });
-        }
-      });
-    }
-
-    if (allSents.length === 0) return { error: 'Kein auswertbarer Text gefunden.' };
-
-    // ---- Schritt 4: TF-IDF-ähnliches Scoring ----
+    // ---- TF-Scoring mit Diversität ----
     var freq = {};
-    allSents.forEach(function(item) {
-      tokenize(item.s).forEach(function(w){ freq[w] = (freq[w]||0) + 1; });
+    sents.forEach(function(s){
+      tokenize(s).forEach(function(w){ freq[w] = (freq[w]||0) + 1; });
     });
-    var N = allSents.length;
 
-    var scored = allSents.map(function(item, idx) {
-      var words = tokenize(item.s);
-      if (words.length === 0) return { item: item, score: 0, idx: idx };
-      // TF-IDF: häufige Wörter im Dokument abwerten (lieber spezifische)
-      var score = words.reduce(function(sum, w) {
-        var tf = freq[w] / N;
-        return sum + (1 / (tf + 0.1));  // seltene Wörter = höherer Score
+    var scored = sents.map(function(s, idx){
+      var words = tokenize(s);
+      if (words.length === 0) return { s:s, score:0, idx:idx };
+      var score = words.reduce(function(sum,w){
+        return sum + 1/(freq[w] + 0.5); // seltene Wörter bevorzugen
       }, 0) / words.length;
-      // Bonus für erste Sätze eines Kapitels (oft definitorisch)
-      if (idx === 0) score *= 1.3;
-      // Bonus für längere Sätze (mehr Inhalt)
-      score *= Math.min(words.length / 15, 1.5);
-      return { item: item, score: score, idx: idx };
+      score *= Math.min(1 + words.length/20, 2); // längere Sätze leicht bevorzugen
+      return { s:s, score:score, idx:idx };
     });
 
     scored.sort(function(a,b){ return b.score - a.score; });
 
-    // ---- Schritt 5: Diversität sicherstellen ----
-    // Nicht mehr als 2 Sätze aus demselben Kapitel
+    // Diversität: keine zwei aufeinanderfolgenden Sätze
     var selected = [];
-    var sectionCount = {};
-    var target = Math.min(Math.max(5, Math.ceil(allSents.length * 0.08)), 8);
+    var usedIdx = {};
+    var target = Math.min(Math.max(5, Math.ceil(sents.length * 0.08)), 8);
 
     for (var i = 0; i < scored.length && selected.length < target; i++) {
-      var secIdx = scored[i].item.secIdx;
-      sectionCount[secIdx] = (sectionCount[secIdx] || 0);
-      if (sectionCount[secIdx] < 2) {
+      var idx = scored[i].idx;
+      if (!usedIdx[idx-1] && !usedIdx[idx+1]) {
         selected.push(scored[i]);
-        sectionCount[secIdx]++;
+        usedIdx[idx] = true;
+      }
+    }
+    // Falls zu wenig: Rest auffüllen ohne Diversitätsbeschränkung
+    for (var j = 0; j < scored.length && selected.length < target; j++) {
+      if (!usedIdx[scored[j].idx]) {
+        selected.push(scored[j]);
+        usedIdx[scored[j].idx] = true;
       }
     }
 
-    // Chronologische Reihenfolge wiederherstellen
     selected.sort(function(a,b){ return a.idx - b.idx; });
-
-    return { points: selected.map(function(x){ return x.item.s; }) };
+    return { points: selected.map(function(x){ return x.s; }) };
   }
 
   function wordCount(t){ return t.trim().split(/\s+/).filter(Boolean).length; }
